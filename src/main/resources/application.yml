@@ -1,0 +1,99 @@
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 400
+      min-spare: 50
+    accept-count: 2000
+    connection-timeout: 5000ms
+
+spring:
+  application:
+    name: httpe-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:httpe_db}
+    username: ${DB_USER:httpe_user}
+    password: ${DB_PASSWORD:httpe_secret}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL:64}
+      minimum-idle: 16
+      idle-timeout: 30000
+      connection-timeout: 3000
+      max-lifetime: 1800000
+      pool-name: HTTPE-HikariPool
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        order_inserts: true
+        order_updates: true
+        jdbc:
+          batch_size: 50
+        show_sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 64
+          max-idle: 16
+          min-idle: 8
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      retries: 3
+      batch-size: 65536
+      buffer-memory: 33554432
+      compression-type: lz4
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        linger.ms: 5
+    consumer:
+      group-id: httpe-consumer-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.example.httpe.dto,com.example.httpe.entity"
+    listener:
+      ack-mode: RECORD
+      concurrency: 6
+
+httpe:
+  idempotency:
+    ttl-seconds: 86400
+  rate-limit:
+    capacity: 20000
+    refill-tokens-per-sec: 15000
+  outbox:
+    polling-interval-ms: 500
+    batch-size: 100
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        httpe.transaction.latency: true
